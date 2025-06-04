@@ -31,6 +31,49 @@ if (!is_dir(IMAGES_DIR)) {
 // --- Helper Functions for File Management ---
 
 /**
+ * Validates if a target file path is safely within a designated base directory.
+ * @param string $baseDirectory The secure base directory.
+ * @param string $fileName The user-supplied filename (potentially malicious).
+ * @return string|false The full validated and safe file path, or false if validation fails.
+ */
+function validateAndGetSafePath($baseDirectory, $fileName) {
+    $sanitizedFileName = basename($fileName); //
+    $fullPath = rtrim($baseDirectory, '/\\') . DIRECTORY_SEPARATOR . $sanitizedFileName;
+    $normalizedFullPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $fullPath);
+    $normalizedBaseDirectory = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, rtrim($baseDirectory, '/\\') . DIRECTORY_SEPARATOR);
+
+    if (strpos($normalizedFullPath, $normalizedBaseDirectory) !== 0) {
+        return false;
+    }
+
+    // For read/delete/edit, it's good to check if the file exists and is a file.
+    if (!file_exists($normalizedFullPath) || !is_file($normalizedFullPath)) {
+        return false;
+    }
+
+    return $normalizedFullPath;
+}
+
+// A slightly modified version for creation, as the file won't exist initially.
+function validateAndGetSafePathForCreation($baseDirectory, $fileName) {
+    $sanitizedFileName = basename($fileName); //
+    // Ensure the file name has an HTML extension for creation
+    if (!preg_match('/\.(html|htm)$/i', $sanitizedFileName)) {
+        $sanitizedFileName .= '.html'; //
+    }
+    $fullPath = rtrim($baseDirectory, '/\\') . DIRECTORY_SEPARATOR . $sanitizedFileName;
+    $normalizedFullPath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $fullPath);
+    $normalizedBaseDirectory = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, rtrim($baseDirectory, '/\\') . DIRECTORY_SEPARATOR);
+
+    if (strpos($normalizedFullPath, $normalizedBaseDirectory) !== 0) {
+        return false;
+    }
+    // No file_exists check needed here, as we are creating it.
+    return $normalizedFullPath;
+}
+
+
+/**
  * Scans the target directory for HTML files.
  * @param string $directory The directory to scan.
  * @return array An array of HTML file names.
@@ -62,29 +105,28 @@ function scanHtmlFiles($directory) {
  */
 function createFile($directory, $fileName) {
     // Sanitize filename to prevent directory traversal or other malicious input
-    $fileName = basename($fileName);
+    $fileName = basename($fileName); //
 
     // Ensure the file name has an HTML extension
     if (!preg_match('/\.(html|htm)$/i', $fileName)) {
-        $fileName .= '.html';
+        $fileName .= '.html'; //
     }
 
- $filePath = $directory . DIRECTORY_SEPARATOR . $fileName;
-    // Validate that the path is within the allowed directory
-    if (strpos($filePath, $directory) !== 0) {
-        return "<p class='error'>Security Error: Attempt to create file outside designated directory.</p>";
+    $filePath = validateAndGetSafePathForCreation($directory, $fileName); // Use the creation-specific validator
+    if ($filePath === false) {
+        return "<p class='error'>Security Error: Attempt to create file outside designated directory or invalid filename.</p>";
     }
 
-    if (file_exists($filePath)) {
+    if (file_exists($filePath)) { //
         return "<p class='error'>Error: File '{$fileName}' already exists!</p>";
     }
 
     // Attempt to create the file with some basic HTML content
-    $initialContent = "<div>\n<title>{$fileName}</title>\n<h1>Welcome to {$fileName}</h1>\n<p>This is a newly created HTML file.</p>\n</div>";
-    if (file_put_contents($filePath, $initialContent) !== false) {
+    $initialContent = "<div>\n<title>{$fileName}</title>\n<h1>Welcome to {$fileName}</h1>\n<p>This is a newly created HTML file.</p>\n</div>"; //
+    if (file_put_contents($filePath, $initialContent) !== false) { //
         return "<p class='success'>File '{$fileName}' created successfully!</p>";
     } else {
-        return "<p class='error'>Error: Could not create file '{$fileName}'. Check directory permissions.</p>";
+        return "<p class='error'>Error: Could not create file '{$fileName}'. Check directory permissions.</p>"; //
     }
 }
 
@@ -96,29 +138,23 @@ function createFile($directory, $fileName) {
  */
 function deleteFile($directory, $fileName) {
     // Sanitize filename
-    $fileName = basename($fileName);
-    $filePath = $directory . DIRECTORY_SEPARATOR . $fileName;
+    $fileName = basename($fileName); //
+    $filePath = validateAndGetSafePath($directory, $fileName); // Use the general validator
 
-    // Validate that the path is within the allowed directory
-    if (strpos($filePath, $directory) !== 0) {
-        return "<p class='error'>Security Error: Attempt to delete file outside designated directory.</p>";
+    if ($filePath === false) {
+        return "<p class='error'>Security Error: Attempt to delete file outside designated directory or invalid file.</p>";
     }
 
-    if (!file_exists($filePath)) {
-        return "<p class='error'>Error: File '{$fileName}' does not exist!</p>";
-    }
-    if (!is_file($filePath)) {
-        return "<p class='error'>Error: '{$fileName}' is not a file!</p>";
-    }
-    // Basic check to ensure it's an HTML file before deleting
+    // The validateAndGetSafePath already checks file_exists and is_file,
+    // but the specific HTML file check is still good to keep here.
     if (!preg_match('/\.(html|htm)$/i', $fileName)) {
-        return "<p class='error'>Error: Only HTML files can be deleted through this interface.</p>";
+        return "<p class='error'>Error: Only HTML files can be deleted through this interface.</p>"; //
     }
 
-    if (unlink($filePath)) {
+    if (unlink($filePath)) { //
         return "<p class='success'>File '{$fileName}' deleted successfully!</p>";
     } else {
-        return "<p class='error'>Error: Could not delete file '{$fileName}'. Check directory permissions.</p>";
+        return "<p class='error'>Error: Could not delete file '{$fileName}'. Check directory permissions.</p>"; //
     }
 }
 
@@ -131,41 +167,41 @@ function deleteFile($directory, $fileName) {
  */
 function renameFile($directory, $oldFileName, $newFileName) {
     // Sanitize filenames
-    $oldFileName = basename($oldFileName);
-    $newFileName = basename($newFileName);
+    $oldFileName = basename($oldFileName); //
+    $newFileName = basename($newFileName); //
 
-    $oldFilePath = $directory . DIRECTORY_SEPARATOR . $oldFileName;
+    $oldFilePath = validateAndGetSafePath($directory, $oldFileName);
+    if ($oldFilePath === false) {
+        return "<p class='error'>Security Error: Invalid original file for rename or attempt to access file outside designated directory.</p>";
+    }
 
     // Ensure the new file name has an HTML extension
     if (!preg_match('/\.(html|htm)$/i', $newFileName)) {
-        $newFileName .= '.html';
+        $newFileName .= '.html'; //
     }
-    $newFilePath = $directory . DIRECTORY_SEPARATOR . $newFileName;
+    $newFilePath = rtrim($directory, '/\\') . DIRECTORY_SEPARATOR . $newFileName; // Construct new path for validation
 
-    // Validate that the paths are within the allowed directory
-    if (strpos($oldFilePath, $directory) !== 0 || strpos($newFilePath, $directory) !== 0) {
+    // Validate the new path against the base directory
+    $normalizedNewFilePath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $newFilePath);
+    $normalizedBaseDirectory = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, rtrim($directory, '/\\') . DIRECTORY_SEPARATOR);
+
+    if (strpos($normalizedNewFilePath, $normalizedBaseDirectory) !== 0) {
         return "<p class='error'>Security Error: Attempt to rename file outside designated directory.</p>";
     }
 
-    if (!file_exists($oldFilePath)) {
-        return "<p class='error'>Error: Original file '{$oldFileName}' does not exist!</p>";
-    }
-    if (!is_file($oldFilePath)) {
-        return "<p class='error'>Error: '{$oldFileName}' is not a file!</p>";
-    }
     // Basic check to ensure it's an HTML file before renaming
     if (!preg_match('/\.(html|htm)$/i', $oldFileName)) {
-        return "<p class='error'>Error: Only HTML files can be renamed through this interface.</p>";
+        return "<p class='error'>Error: Only HTML files can be renamed through this interface.</p>"; //
     }
 
-    if (file_exists($newFilePath)) {
+    if (file_exists($newFilePath)) { //
         return "<p class='error'>Error: A file named '{$newFileName}' already exists!</p>";
     }
 
-    if (rename($oldFilePath, $newFilePath)) {
+    if (rename($oldFilePath, $newFilePath)) { //
         return "<p class='success'>File '{$oldFileName}' renamed to '{$newFileName}' successfully!</p>";
     } else {
-        return "<p class='error'>Error: Could not rename file '{$oldFileName}' to '{$newFileName}'. Check directory permissions.</p>";
+        return "<p class='error'>Error: Could not rename file '{$oldFileName}' to '{$newFileName}'. Check directory permissions.</p>"; //
     }
 }
 
@@ -176,45 +212,49 @@ function renameFile($directory, $oldFileName, $newFileName) {
  * @return string A message indicating success or failure.
  */
 function handleImageUpload($file, $targetDirectory) {
-    if (!isset($file['name']) || $file['error'] !== UPLOAD_ERR_OK) {
-        return "<p class='error'>Error: No file uploaded or an upload error occurred.</p>";
+    if (!isset($file['name']) || $file['error'] !== UPLOAD_ERR_OK) { //
+        return "<p class='error'>Error: No file uploaded or an upload error occurred.</p>"; //
     }
 
-    $fileName = basename($file['name']);
-    $targetFilePath = $targetDirectory . DIRECTORY_SEPARATOR . $fileName;
-    $imageFileType = strtolower(pathinfo($targetFilePath, PATHINFO_EXTENSION));
+    $fileName = basename($file['name']); //
+    $targetFilePath = $targetDirectory . DIRECTORY_SEPARATOR . $fileName; //
+    $imageFileType = strtolower(pathinfo($targetFilePath, PATHINFO_EXTENSION)); //
 
     // Check if image file is a actual image or fake image
-    $check = getimagesize($file['tmp_name']);
+    $check = getimagesize($file['tmp_name']); //
     if ($check === false) {
-        return "<p class='error'>Error: File is not an image.</p>";
+        return "<p class='error'>Error: File is not an image.</p>"; //
     }
 
     // Allow certain file formats
-    $allowedTypes = ['jpg', 'png', 'jpeg', 'gif', 'webp', 'svg'];
-    if (!in_array($imageFileType, $allowedTypes)) {
-        return "<p class='error'>Error: Sorry, only JPG, JPEG, PNG, GIF, WEBP, & SVG files are allowed for upload.</p>";
+    $allowedTypes = ['jpg', 'png', 'jpeg', 'gif', 'webp', 'svg']; //
+    if (!in_array($imageFileType, $allowedTypes)) { //
+        return "<p class='error'>Error: Sorry, only JPG, JPEG, PNG, GIF, WEBP, & SVG files are allowed for upload.</p>"; //
     }
 
     // Check file size (e.g., 5MB limit)
     if ($file['size'] > 5 * 1024 * 1024) { // 5 MB in bytes
-        return "<p class='error'>Error: Sorry, your file is too large (max 5MB).</p>";
+        return "<p class='error'>Error: Sorry, your file is too large (max 5MB).</p>"; //
     }
 
     // Check if file already exists
-    if (file_exists($targetFilePath)) {
-        return "<p class='error'>Error: Sorry, file '{$fileName}' already exists.</p>";
+    if (file_exists($targetFilePath)) { //
+        return "<p class='error'>Error: Sorry, file '{$fileName}' already exists.</p>"; //
     }
 
     // Validate that the path is within the allowed directory
-    if (strpos($targetFilePath, $targetDirectory) !== 0) {
+    // For uploads, we need to check the constructed path to ensure it doesn't try to escape
+    $normalizedTargetFilePath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $targetFilePath);
+    $normalizedTargetDirectory = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, rtrim($targetDirectory, '/\\') . DIRECTORY_SEPARATOR);
+
+    if (strpos($normalizedTargetFilePath, $normalizedTargetDirectory) !== 0) {
         return "<p class='error'>Security Error: Attempt to upload file outside designated directory.</p>";
     }
 
-    if (move_uploaded_file($file['tmp_name'], $targetFilePath)) {
-        return "<p class='success'>The file '{$fileName}' has been uploaded.</p>";
+    if (move_uploaded_file($file['tmp_name'], $targetFilePath)) { //
+        return "<p class='success'>The file '{$fileName}' has been uploaded.</p>"; //
     } else {
-        return "<p class='error'>Error: There was an error uploading your file. Check directory permissions.</p>";
+        return "<p class='error'>Error: There was an error uploading your file. Check directory permissions.</p>"; //
     }
 }
 
@@ -222,81 +262,82 @@ function handleImageUpload($file, $targetDirectory) {
 // --- Handle File Editing and Management Form Submissions ---
 
 // Handle file save (from original edit.php)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['file_path']) && isset($_POST['content'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['file_path']) && isset($_POST['content'])) { //
     $file_to_save = basename($_POST['file_path']); // Get filename without path
-    $save_path = $targetDirectory . DIRECTORY_SEPARATOR . $file_to_save;
+    // $save_path = $targetDirectory . DIRECTORY_SEPARATOR . $file_to_save; // Not directly used for validation
 
-    // Security check: Ensure the file being saved is indeed within the allowed directory
-    if (strpos($save_path, $targetDirectory) !== 0) {
-        $message = 'Security Error: Attempt to save file outside designated directory.';
+    $safe_save_path = validateAndGetSafePath($targetDirectory, $file_to_save); // Use the validator
+    if ($safe_save_path === false) {
+        $message = 'Security Error: Attempt to save file outside designated directory.'; //
     } else {
-        $content = $_POST['content'];
-        if (file_put_contents($save_path, $content) !== false) {
-            $message = 'File saved successfully!';
+        $content = $_POST['content']; //
+        if (file_put_contents($safe_save_path, $content) !== false) { //
+            $message = 'File saved successfully!'; //
             // Update file content in the editor after saving
-            $file_content = $content;
+            $file_content = $content; //
         } else {
-            $message = 'Error: Could not save file. Check directory permissions.';
+            $message = 'Error: Could not save file. Check directory permissions.'; //
         }
     }
 }
 
 // Handle file management actions (create, delete, rename)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    switch ($_POST['action']) {
-        case 'create':
-            if (isset($_POST['new_file_name']) && !empty(trim($_POST['new_file_name']))) {
-                $message = createFile($targetDirectory, trim($_POST['new_file_name']));
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) { //
+    switch ($_POST['action']) { //
+        case 'create': //
+            if (isset($_POST['new_file_name']) && !empty(trim($_POST['new_file_name']))) { //
+                $message = createFile($targetDirectory, trim($_POST['new_file_name'])); //
             } else {
-                $message = "<p class='error'>Please provide a name for the new file.</p>";
+                $message = "<p class='error'>Please provide a name for the new file.</p>"; //
             }
             break;
 
-        case 'delete':
-            if (isset($_POST['file_to_delete']) && !empty($_POST['file_to_delete'])) {
-                $message = deleteFile($targetDirectory, $_POST['file_to_delete']);
+        case 'delete': //
+            if (isset($_POST['file_to_delete']) && !empty($_POST['file_to_delete'])) { //
+                $message = deleteFile($targetDirectory, $_POST['file_to_delete']); //
             } else {
-                $message = "<p class='error'>Please select a file to delete.</p>";
+                $message = "<p class='error'>Please select a file to delete.</p>"; //
             }
             break;
 
-        case 'rename':
-            if (isset($_POST['old_file_name']) && !empty($_POST['old_file_name']) &&
-                isset($_POST['new_file_name_rename']) && !empty(trim($_POST['new_file_name_rename']))) {
-                $message = renameFile($targetDirectory, $_POST['old_file_name'], trim($_POST['new_file_name_rename']));
+        case 'rename': //
+            if (isset($_POST['old_file_name']) && !empty($_POST['old_file_name']) && //
+                isset($_POST['new_file_name_rename']) && !empty(trim($_POST['new_file_name_rename']))) { //
+                $message = renameFile($targetDirectory, $_POST['old_file_name'], trim($_POST['new_file_name_rename'])); //
             } else {
-                $message = "<p class='error'>Please select a file and provide a new name to rename.</p>";
+                $message = "<p class='error'>Please select a file and provide a new name to rename.</p>"; //
             }
             break;
     }
 }
 
 // Handle image upload
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_image']) && isset($_FILES['image_file'])) {
-    $message = handleImageUpload($_FILES['image_file'], IMAGES_DIR);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['upload_image']) && isset($_FILES['image_file'])) { //
+    $message = handleImageUpload($_FILES['image_file'], IMAGES_DIR); //
 }
 
 
 // Sanitize and validate requested file for editing (from original edit.php)
-if (isset($_GET['file'])) {
+if (isset($_GET['file'])) { //
     $requested_file = basename($_GET['file']); // Get filename without path
-    $current_file_path = $targetDirectory . DIRECTORY_SEPARATOR . $requested_file;
+    // $current_file_path = $targetDirectory . DIRECTORY_SEPARATOR . $requested_file; // Not directly used for validation
 
-    // Validate that the file is within the allowed directory
-    if (!file_exists($current_file_path) || strpos($current_file_path, $targetDirectory) !== 0) {
-        $message = 'Warning: File not found or deleted.';
+    $safe_current_file_path = validateAndGetSafePath($targetDirectory, $requested_file);
+    if ($safe_current_file_path === false) {
+        $message = 'Warning: File not found or deleted or invalid path.'; //
         $current_file_path = null; // Invalidate the file path
     } else {
-        $file_content = file_get_contents($current_file_path);
-        if ($file_content === false) {
-            $message = 'Error: Could not read file content.';
-            $current_file_path = null;
+        $current_file_path = $safe_current_file_path; // Use the validated path
+        $file_content = file_get_contents($current_file_path); //
+        if ($file_content === false) { //
+            $message = 'Error: Could not read file content.'; //
+            $current_file_path = null; //
         }
     }
 }
 
 // Get the current list of HTML files
-$htmlFiles = scanHtmlFiles($targetDirectory);
+$htmlFiles = scanHtmlFiles($targetDirectory); //
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -316,7 +357,7 @@ $htmlFiles = scanHtmlFiles($targetDirectory);
     content_css: '//www.tiny.cloud/css/codepen.min.css',
    });
     </script>
-    
+
 </head>
 <body>
    <div class="container">
@@ -426,7 +467,7 @@ $htmlFiles = scanHtmlFiles($targetDirectory);
                     <button type="submit" class="btn-primary">Rename File</button>
                 </form>
             </div>
-            
+
             <div class="form-group image-uploader">
                 <h2 class="text-2xl">Upload Image:</h2>
                 <form method="POST" action="" enctype="multipart/form-data">
