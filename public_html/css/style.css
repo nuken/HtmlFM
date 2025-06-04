@@ -164,6 +164,9 @@ body {
                 grid-template-columns: 1fr 1fr; /* Two columns on medium screens and up */
             }
         }
+	   #editor {
+	     min-height: 225px;
+		}	
 	    .editor-section {
             overflow: auto;
 		}	
