@@ -91,4 +91,4 @@ Important: This project is intended for testing and learning purposes only. Do n
  Implement a `.htaccess` file with proper restrictions in your public webroot to further secure your application. This might include restricting access to certain directories or files, setting up rewrite rules, and preventing directory listings.
  Regularly update TinyMCE and any other third-party libraries used in the project to patch potential vulnerabilities.
 
-Enjoy experimenting with this file manager! What else can I help you refine or clarify?
+Enjoy experimenting with this file manager!
