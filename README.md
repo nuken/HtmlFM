@@ -93,3 +93,11 @@ Important: This project is intended for testing and learning purposes only. Do n
  Regularly update TinyMCE and any other third-party libraries used in the project to patch potential vulnerabilities.
 
 Enjoy experimenting with this file manager!
+
+---
+
+![index.php full screen](https://ik.imagekit.io/umtqd7igd/files/card1.jpeg "index.php full screen")
+![index.php half screen](https://ik.imagekit.io/umtqd7igd/files/card2.jpeg "index.php half screen")
+![login page](https://ik.imagekit.io/umtqd7igd/files/card3.jpeg "login page")
+![edit.php](https://ik.imagekit.io/umtqd7igd/files/card4.jpeg "edit.php")
+![edit.php editing a file](https://ik.imagekit.io/umtqd7igd/files/card5.jpeg "edit.php editing a file")
