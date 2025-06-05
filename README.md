@@ -96,6 +96,12 @@ Enjoy experimenting with this file manager!
 
 ---
 
+### Issues On Windows Test Server
+
+Symlinks used in some Windows test servers will return false for `realpath()` PHP function. This results in an "outside designated directory" error while using the `edit.php` file. I have included a `test-edit.php` file that does not use `realpath()`, it can be used to replace the code in the `edit.php` file if needed for local testing.
+
+---
+
 ![index.php full screen](https://ik.imagekit.io/umtqd7igd/files/card1.jpeg "index.php full screen")
 ![index.php half screen](https://ik.imagekit.io/umtqd7igd/files/card2.jpeg "index.php half screen")
 ![login page](https://ik.imagekit.io/umtqd7igd/files/card3.jpeg "login page")
