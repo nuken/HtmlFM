@@ -59,7 +59,7 @@ To get started, follow these steps:
 
      Upload the entire contents of the `public_html` folder to your web server's public webroot directory (e.g., `public_html`, `www`, `htdocs`).
      Upload the `private` folder and its contents outside your public webroot. This is crucial for security, as it prevents direct web access to your configuration files.
-     Navigate to edit.php (i.e. localhost/edit.php) and login to access the file manager.
+     Navigate to edit.php (e.g. localhost/edit.php) and login to access the file manager.
     
     Here's an illustration of the recommended file placement:
 
