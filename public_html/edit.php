@@ -1,5 +1,3 @@
-
-
 <?php
 session_start();
 require_once __DIR__ . '/../private/config.php'; // Assumes config.php defines FILES_DIR
